@@ -1,5 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading;
@@ -13,11 +12,11 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
     // Diagnostics
     System.Diagnostics.Stopwatch m_StopWatch;
 
-    string[] m_FontSizingOptions = { "Auto Sizing", "Custom Size" };
+    //string[] m_FontSizingOptions = { "Auto Sizing", "Custom Size" };
     int m_PointSizeSamplingMode;
-    string[] m_FontResolutionLabels = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
-    int[] m_FontAtlasResolutions = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-    string[] m_FontCharacterSets = { "ASCII", "Extended ASCII", "ASCII Lowercase", "ASCII Uppercase", "Numbers + Symbols", "Custom Range", "Unicode Range (Hex)", "Custom Characters", "Characters from File" };
+    //string[] m_FontResolutionLabels = { "16", "32", "64", "128", "256", "512", "1024", "2048", "4096", "8192" };
+    //int[] m_FontAtlasResolutions = { 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
+    //string[] m_FontCharacterSets = { "ASCII", "Extended ASCII", "ASCII Lowercase", "ASCII Uppercase", "Numbers + Symbols", "Custom Range", "Unicode Range (Hex)", "Custom Characters", "Characters from File" };
     enum FontPackingModes { Fast = 0, Optimum = 4 };
     FontPackingModes m_PackingMode = FontPackingModes.Fast;
 
@@ -102,50 +101,18 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
             AssetDatabase.Refresh();
         }
-        
+
         Resources.UnloadUnusedAssets();
     }
 
     public void OnGUI()
     {
-        DrawGUI();
+        OnMyGUI();
     }
 
     public void Update()
     {
-        if (m_IsRepaintNeeded)
-        {
-            //Debug.Log("Repainting...");
-            m_IsRepaintNeeded = false;
-            Repaint();
-        }
-
-        // Update Progress bar is we are Rendering a Font.
-        if (m_IsProcessing)
-        {
-            m_RenderingProgress = TMPro_FontPlugin.Check_RenderProgress();
-
-            m_IsRepaintNeeded = true;
-        }
-
-        // Update Feedback Window & Create Font Texture once Rendering is done.
-        if (m_IsRenderingDone)
-        {
-            // Stop StopWatch
-            m_StopWatch.Stop();
-            Debug.Log("Font Atlas generation completed in: " + m_StopWatch.Elapsed.TotalMilliseconds.ToString("0.000 ms."));
-            m_StopWatch.Reset();
-
-            m_IsProcessing = false;
-            m_IsRenderingDone = false;
-
-            if (m_IsGenerationCancelled == false)
-            {
-                UpdateRenderFeedbackWindow();
-                CreateFontTexture();
-            }
-            Repaint();
-        }
+        MyUpdate();
     }
 
 
@@ -246,7 +213,8 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
     /// </summary>
     void UpdateRenderFeedbackWindow()
     {
-        m_PointSize = m_FontFaceInfo.pointSize;
+        // 不要设置
+        //m_PointSize = m_FontFaceInfo.pointSize;
 
         string colorTag = m_FontFaceInfo.characterCount == m_CharacterCount ? "<color=#C0ffff>" : "<color=#ffff00>";
         string colorTag2 = "<color=#C0ffff>";
@@ -280,13 +248,15 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         if (missingGlyphReport.Length > 16300)
             m_OutputFeedback += "\n\n<color=#ffff00>Report truncated.</color>\n<color=#c0ffff>See</color> \"TextMesh Pro\\Glyph Report.txt\"";
 
+        // 多个字体，所以还是用输出日志
+        Debug.Log(m_OutputFeedback);
         // Save Missing Glyph Report file
-        if (Directory.Exists("Assets/TextMesh Pro"))
-        {
-            missingGlyphReport = System.Text.RegularExpressions.Regex.Replace(missingGlyphReport, @"<[^>]*>", string.Empty);
-            File.WriteAllText("Assets/TextMesh Pro/Glyph Report.txt", missingGlyphReport);
-            AssetDatabase.Refresh();
-        }
+        //if (Directory.Exists("Assets/TextMesh Pro"))
+        //{
+        //    missingGlyphReport = System.Text.RegularExpressions.Regex.Replace(missingGlyphReport, @"<[^>]*>", string.Empty);
+        //    File.WriteAllText("Assets/TextMesh Pro/Glyph Report.txt", missingGlyphReport);
+        //    AssetDatabase.Refresh();
+        //}
     }
 
 
@@ -561,9 +531,11 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
             // Add Font Atlas as Sub-Asset
             fontAsset.atlas = m_FontAtlas;
-            m_FontAtlas.name = tex_FileName + " Atlas";
-
-            AssetDatabase.AddObjectToAsset(m_FontAtlas, fontAsset);
+            if (!m_FontAtlas.name.EndsWith(" Atlas")) // 因为图集复用，所以只要加到第一个资产里
+            {
+                m_FontAtlas.name = tex_FileName + " Atlas";
+                AssetDatabase.AddObjectToAsset(m_FontAtlas, fontAsset);
+            }
 
             // Create new Material and Add it as Sub-Asset
             Shader default_Shader = Shader.Find("TextMeshPro/Distance Field"); //m_shaderSelection;
@@ -590,8 +562,11 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
             // Find all Materials referencing this font atlas.
             Material[] material_references = TMP_EditorUtility.FindMaterialReferences(fontAsset);
 
-            // Destroy Assets that will be replaced.
-            DestroyImmediate(fontAsset.atlas, true);
+            if (fontAsset.atlas) // 有可能被其他资产删除了
+            {
+                // Destroy Assets that will be replaced.
+                DestroyImmediate(fontAsset.atlas, true);
+            }
 
             //Set Font Asset Type
             fontAsset.fontAssetType = TMP_FontAsset.FontAssetTypes.SDF;
@@ -615,13 +590,15 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
             // Add Font Atlas as Sub-Asset
             fontAsset.atlas = m_FontAtlas;
-            m_FontAtlas.name = tex_FileName + " Atlas";
+            if (!m_FontAtlas.name.EndsWith(" Atlas")) // 因为图集复用，所以只要加到第一个资产里
+            {
+                m_FontAtlas.name = tex_FileName + " Atlas";
+                AssetDatabase.AddObjectToAsset(m_FontAtlas, fontAsset);
+            }
 
             // Special handling due to a bug in earlier versions of Unity.
             m_FontAtlas.hideFlags = HideFlags.None;
             fontAsset.material.hideFlags = HideFlags.None;
-
-            AssetDatabase.AddObjectToAsset(m_FontAtlas, fontAsset);
 
             // Assign new font atlas texture to the existing material.
             fontAsset.material.SetTexture(ShaderUtilities.ID_MainTex, fontAsset.atlas);
@@ -657,7 +634,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
         AssetDatabase.Refresh();
 
-        m_FontAtlas = null;
+        //m_FontAtlas = null; 贴图不要删除
 
         // NEED TO GENERATE AN EVENT TO FORCE A REDRAW OF ANY TEXTMESHPRO INSTANCES THAT MIGHT BE USING THIS FONT ASSET
         TMPro_EventManager.ON_FONT_PROPERTY_CHANGED(true, fontAsset);
@@ -912,9 +889,18 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
             var characterList = AssetDatabase.LoadAssetAtPath<TextAsset>(settings.characterSequenceFile);
             m_CharacterSequence = characterList.text;
         }
+        m_FontStyle = (FaceStyles)settings.fontStyle;
+        m_FontStyleValue = settings.fontStyleModifier;
+        m_RenderMode = (RenderModes)settings.renderMode;
+        m_IncludeKerningPairs = settings.includeFontFeatures;
+
+        if (string.IsNullOrEmpty(m_WarningMessage) || m_SelectedFontAsset || m_LegacyFontAsset || m_SavedFontAtlas || m_IsFontAtlasInvalid)
+        {
+            // 仅为了去除警告
+        }
     }
 
-    private void DrawGUI()
+    private void OnMyGUI()
     {
         GUI.enabled = !this.m_IsProcessing;
         EditorGUI.indentLevel++;
@@ -951,6 +937,54 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         GUI.enabled = true;
     }
 
+    private void MyUpdate()
+    {
+        if (m_IsRepaintNeeded)
+        {
+            //Debug.Log("Repainting...");
+            m_IsRepaintNeeded = false;
+            Repaint();
+        }
+
+        // 第一步创建字体渲染数组
+        // Update Progress bar is we are Rendering a Font.
+        if (m_IsProcessing)
+        {
+            m_RenderingProgress = TMPro_FontPlugin.Check_RenderProgress();
+            m_FontAssetInfos[m_CurGenerateIndex].genPercent = m_RenderingProgress * 100;
+
+            m_IsRepaintNeeded = true;
+        }
+
+        // Update Feedback Window & Create Font Texture once Rendering is done.
+        if (m_IsRenderingDone)
+        {
+            // Stop StopWatch
+            m_StopWatch.Stop();
+            Debug.Log("Font Atlas generation completed in: " + m_StopWatch.Elapsed.TotalMilliseconds.ToString("0.000 ms."));
+            m_StopWatch.Reset();
+
+            m_IsProcessing = false;
+            m_IsRenderingDone = false;
+
+            if (m_IsGenerationCancelled == false)
+            {
+                // 第二步输出渲染结果
+                UpdateRenderFeedbackWindow();
+                // 第三步将渲染数组填充到纹理贴图（注意，贴图共享不删除）
+                CreateFontTexture();
+                foreach (var asset in m_FontAssetInfos[m_CurGenerateIndex].assets)
+                {
+                    // 最后保存信息到字体资产
+                    Save_SDF_FontAsset(asset);
+                }
+                // 最后置空
+                m_FontAtlas = null;
+            }
+            Repaint();
+        }
+    }
+
     private void Generate()
     {
         m_CurGenerateIndex = -1;
@@ -973,16 +1007,8 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
             return;
         }
 
-        font_TTF = info.fontObj;
-        font_size = 22;
-        font_atlas_width = 2048;
-        font_atlas_height = 2048;
-        if (string.IsNullOrEmpty(characterSequence))
-        {
-            var characterList = AssetDatabase.LoadAssetAtPath<TextAsset>("Assets/TextMeshPro/chinese_3500.txt");
-            this.characterSequence = characterList.text;
-        }
-        DoCreate();
+        m_SourceFontFile = AssetDatabase.LoadAssetAtPath<Font>(info.fontPath);
+        GenerateFontAtlasButton();
     }
 
     private class FontAssetInfo
