@@ -561,7 +561,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         else
         {
             // Find all Materials referencing this font atlas.
-            Material[] material_references = TMP_EditorUtility.FindMaterialReferences(fontAsset);
+            Material[] material_references = TMProFontCustomizedCreater.FindMaterialReferences(fontAsset);
 
             if (fontAsset.atlas) // 有可能被其他资产删除了
             {

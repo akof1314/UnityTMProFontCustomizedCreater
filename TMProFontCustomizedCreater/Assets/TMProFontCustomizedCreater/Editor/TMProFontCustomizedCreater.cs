@@ -1,8 +1,10 @@
-﻿using System;
+﻿using System.Collections.Generic;
+using TMPro;
 using TMPro.EditorUtilities;
 using UnityEditor;
+using UnityEngine;
 
-public class TMProFontCustomizedCreater 
+public class TMProFontCustomizedCreater
 {
     [MenuItem("界面工具/TextMeshPro工具/TextMeshPro 字库生成工具")]
     static void Open()
@@ -74,5 +76,31 @@ public class TMProFontCustomizedCreater
         public float fontStyleModifier;
         public int renderMode;
         public bool includeFontFeatures;
+    }
+
+    /// <summary>
+    /// 因为图集复用，所以不能用原本的接口，这里根据每个项目不同的命名规则来查找材质
+    /// </summary>
+    /// <param name="fontAsset"></param>
+    /// <returns></returns>
+    public static Material[] FindMaterialReferences(TMP_FontAsset fontAsset)
+    {
+        List<Material> materialList = new List<Material>();
+        Material material1 = fontAsset.material;
+        materialList.Add(material1);
+        string str1 = "t:Material ";
+        string str2 = fontAsset.name;
+        string str3 = "_";
+        foreach (string asset in AssetDatabase.FindAssets(str1 + str2 + str3))
+        {
+            Material material2 = AssetDatabase.LoadAssetAtPath<Material>(AssetDatabase.GUIDToAssetPath(asset));
+            if (material2.HasProperty(ShaderUtilities.ID_MainTex) &&
+                material2.GetTexture(ShaderUtilities.ID_MainTex) != null &&
+                (material1.GetTexture(ShaderUtilities.ID_MainTex) != null &&
+                 material2.GetTexture(ShaderUtilities.ID_MainTex).GetInstanceID() ==
+                 material1.GetTexture(ShaderUtilities.ID_MainTex).GetInstanceID()) && !materialList.Contains(material2))
+                materialList.Add(material2);
+        }
+        return materialList.ToArray();
     }
 }
