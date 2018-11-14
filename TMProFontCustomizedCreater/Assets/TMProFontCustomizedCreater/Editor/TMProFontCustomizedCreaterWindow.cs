@@ -845,6 +845,9 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
                     errorCode = TMPro_FontPlugin.Render_Characters(m_TextureBuffer, m_AtlasWidth, m_AtlasHeight,
                         padding, characterSet, m_CharacterCount, m_FontStyle, strokeSize, autoSizing, m_RenderMode,
                         (int) m_PackingMode, ref m_FontFaceInfo, m_FontGlyphInfo);
+
+                    ThreadRenderBackupFont(0, m_AtlasWidth);
+
                     m_IsRenderingDone = true;
                 });
 
@@ -852,8 +855,109 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         }
     }
 
+    private void ThreadRenderBackupFont(int backupLevel, int xOffsetDist)
+    {
+        if (m_FontBackupPaths == null || m_FontBackupPaths.Length <= backupLevel)
+        {
+            return;
+        }
+
+        List<int> list = new List<int>();
+        for (int index = 0; index < m_CharacterCount; ++index)
+        {
+            if (m_FontGlyphInfo[index].x == -1)
+            {
+                list.Add(m_FontGlyphInfo[index].id);
+            }
+        }
+        if (list.Count == 0)
+        {
+            return;
+        }
+
+        int[] characterSet = list.ToArray();
+        string fontPath = m_FontBackupPaths[backupLevel];
+        int errorCode = TMPro_FontPlugin.Load_TrueType_Font(fontPath);
+        if (errorCode != 0)
+        {
+            return;
+        }
+
+        var tmpAtlasWidth = 512;
+        var tmpAtlasHeight = 512;
+        var tmpTextureBuffer = new byte[tmpAtlasWidth * tmpAtlasHeight];
+        var tmpCharacterCount = characterSet.Length;
+        var tmpFontFaceInfo = default(FT_FaceInfo);
+        var tmpFontGlyphInfo = new FT_GlyphInfo[tmpCharacterCount];
+
+        bool autoSizing = m_PointSizeSamplingMode == 0;
+        float strokeSize = m_FontStyleValue;
+        if (m_RenderMode == RenderModes.DistanceField16) strokeSize = m_FontStyleValue * 16;
+        if (m_RenderMode == RenderModes.DistanceField32) strokeSize = m_FontStyleValue * 32;
+
+        errorCode = TMPro_FontPlugin.Render_Characters(tmpTextureBuffer, tmpAtlasWidth,
+            tmpAtlasHeight, m_Padding, characterSet, tmpCharacterCount, m_FontStyle, strokeSize,
+            autoSizing, m_RenderMode, (int)m_PackingMode, ref tmpFontFaceInfo, tmpFontGlyphInfo);
+        if (errorCode != 0)
+        {
+            return;
+        }
+
+        int wordWidth = m_PointSize;
+        int xStart = xOffsetDist - m_Padding * 2 - wordWidth;   // 从padding开始拷贝，否则会出现负偏移丢失的情况
+        int yStart = m_AtlasHeight - m_Padding - 1;
+        int numY = 0;
+        for (int index = 0; index < tmpCharacterCount; ++index)
+        {
+            if (!Mathf.Approximately(tmpFontGlyphInfo[index].x, -1))
+            {
+                var gi = tmpFontGlyphInfo[index];
+                var x = Mathf.FloorToInt(gi.x) - m_Padding;
+                var y = tmpAtlasHeight - (Mathf.FloorToInt(gi.y) - m_Padding);
+                var w = Mathf.CeilToInt(gi.width) + m_Padding * 2;
+                var h = Mathf.CeilToInt(gi.height) + m_Padding * 2;
+
+                for (int r = 0; r < h; r++)
+                {
+                    for (int c = 0; c < w; c++)
+                    {
+                        m_TextureBuffer[(yStart - r) * m_AtlasWidth + c + xStart] =
+                            tmpTextureBuffer[(y - r) * tmpAtlasWidth + c + x];
+                    }
+                }
+                var idx = ArrayUtility.FindIndex(m_FontGlyphInfo, info => info.id == gi.id);
+                if (idx != -1)
+                {
+                    var gi2 = m_FontGlyphInfo[idx];
+                    gi2.x = xStart + m_Padding;
+                    gi2.y = m_AtlasHeight - yStart + m_Padding;
+                    gi2.width = gi.width;
+                    gi2.height = gi.height;
+                    gi2.xAdvance = gi.xAdvance;
+                    gi2.xOffset = gi.xOffset;
+                    gi2.yOffset = gi.yOffset;
+                    m_FontGlyphInfo[idx] = gi2;
+                }
+
+                yStart = yStart - h - m_Padding - 1;
+                numY++;
+
+                // 如果超过五个则换一列
+                if (numY > 5)
+                {
+                    numY = 0;
+                    xStart = xStart - m_Padding * 2 - wordWidth;
+                    yStart = m_AtlasHeight - m_Padding - 1;
+                }
+            }
+        }
+
+        ThreadRenderBackupFont(++backupLevel, xStart);
+    }
+
     private readonly List<FontAssetInfo> m_FontAssetInfos = new List<FontAssetInfo>();
     private int m_CurGenerateIndex;
+    private string[] m_FontBackupPaths;
 
     private void OnMyEnable()
     {
@@ -902,6 +1006,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         m_FontStyleValue = settings.fontStyleModifier;
         m_RenderMode = (RenderModes)settings.renderMode;
         m_IncludeKerningPairs = settings.includeFontFeatures;
+        m_FontBackupPaths = settings.fontBackupPaths;
 
         if (string.IsNullOrEmpty(m_WarningMessage) || m_SelectedFontAsset || m_LegacyFontAsset || m_SavedFontAtlas || m_IsFontAtlasInvalid)
         {
