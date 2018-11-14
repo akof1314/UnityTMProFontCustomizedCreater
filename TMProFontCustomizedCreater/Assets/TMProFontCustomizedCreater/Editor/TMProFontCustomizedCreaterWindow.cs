@@ -79,6 +79,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
         // Debug Link to received message from Native Code
         //TMPro_FontPlugin.LinkDebugLog(); // Link with C++ Plugin to get Debug output
+        OnMyEnable();
     }
 
     public void OnDisable()
@@ -343,17 +344,17 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
     void Save_Normal_FontAsset(string filePath)
     {
-        filePath = filePath.Substring(0, filePath.Length - 6); // Trim file extension from filePath.
+        //filePath = filePath.Substring(0, filePath.Length - 6); // Trim file extension from filePath.
 
-        string dataPath = Application.dataPath;
+        //string dataPath = Application.dataPath;
 
-        if (filePath.IndexOf(dataPath, System.StringComparison.InvariantCultureIgnoreCase) == -1)
-        {
-            Debug.LogError("You're saving the font asset in a directory outside of this project folder. This is not supported. Please select a directory under \"" + dataPath + "\"");
-            return;
-        }
+        //if (filePath.IndexOf(dataPath, System.StringComparison.InvariantCultureIgnoreCase) == -1)
+        //{
+        //    Debug.LogError("You're saving the font asset in a directory outside of this project folder. This is not supported. Please select a directory under \"" + dataPath + "\"");
+        //    return;
+        //}
 
-        string relativeAssetPath = filePath.Substring(dataPath.Length - 6);
+        string relativeAssetPath = filePath;
         string tex_DirName = Path.GetDirectoryName(relativeAssetPath);
         string tex_FileName = Path.GetFileNameWithoutExtension(relativeAssetPath);
         string tex_Path_NoExt = tex_DirName + "/" + tex_FileName;
@@ -473,17 +474,17 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
     void Save_SDF_FontAsset(string filePath)
     {
-        filePath = filePath.Substring(0, filePath.Length - 6); // Trim file extension from filePath.
+        //filePath = filePath.Substring(0, filePath.Length - 6); // Trim file extension from filePath.
 
-        string dataPath = Application.dataPath;
+        //string dataPath = Application.dataPath;
 
-        if (filePath.IndexOf(dataPath, System.StringComparison.InvariantCultureIgnoreCase) == -1)
-        {
-            Debug.LogError("You're saving the font asset in a directory outside of this project folder. This is not supported. Please select a directory under \"" + dataPath + "\"");
-            return;
-        }
+        //if (filePath.IndexOf(dataPath, System.StringComparison.InvariantCultureIgnoreCase) == -1)
+        //{
+        //    Debug.LogError("You're saving the font asset in a directory outside of this project folder. This is not supported. Please select a directory under \"" + dataPath + "\"");
+        //    return;
+        //}
 
-        string relativeAssetPath = filePath.Substring(dataPath.Length - 6);
+        string relativeAssetPath = filePath;
         string tex_DirName = Path.GetDirectoryName(relativeAssetPath);
         string tex_FileName = Path.GetFileNameWithoutExtension(relativeAssetPath);
         string tex_Path_NoExt = tex_DirName + "/" + tex_FileName;
@@ -619,18 +620,21 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         }
 
         // Saving File for Debug
-        //var pngData = destination_Atlas.EncodeToPNG();
-        //File.WriteAllBytes("Assets/Textures/Debug Distance Field.png", pngData);
+        //var pngData = m_FontAtlas.EncodeToPNG();
+        //File.WriteAllBytes("Assets/Debug Distance Field.png", pngData);
 
         // Save Font Asset creation settings
         m_SelectedFontAsset = fontAsset;
         m_LegacyFontAsset = null;
 
+        // 提到这里才能保存完整
+        fontAsset.ReadFontDefinition();
+
         AssetDatabase.SaveAssets();
 
         AssetDatabase.ImportAsset(AssetDatabase.GetAssetPath(fontAsset));  // Re-import font asset to get the new updated version.
 
-        fontAsset.ReadFontDefinition();
+        //fontAsset.ReadFontDefinition();
 
         AssetDatabase.Refresh();
 
@@ -647,7 +651,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
         face.Name = ftFace.name;
         face.PointSize = (float)ftFace.pointSize / scaleFactor;
-        face.Padding = ftFace.padding / scaleFactor;
+        face.Padding = (float)ftFace.padding / scaleFactor;
         face.LineHeight = ftFace.lineHeight / scaleFactor;
         face.CapHeight = 0;
         face.Baseline = 0;
@@ -838,7 +842,9 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
                 {
                     m_IsRenderingDone = false;
 
-                    errorCode = TMPro_FontPlugin.Render_Characters(m_TextureBuffer, m_AtlasWidth, m_AtlasHeight, padding, characterSet, m_CharacterCount, m_FontStyle, strokeSize, autoSizing, m_RenderMode, (int)m_PackingMode, ref m_FontFaceInfo, m_FontGlyphInfo);
+                    errorCode = TMPro_FontPlugin.Render_Characters(m_TextureBuffer, m_AtlasWidth, m_AtlasHeight,
+                        padding, characterSet, m_CharacterCount, m_FontStyle, strokeSize, autoSizing, m_RenderMode,
+                        (int) m_PackingMode, ref m_FontFaceInfo, m_FontGlyphInfo);
                     m_IsRenderingDone = true;
                 });
 
@@ -849,8 +855,11 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
     private readonly List<FontAssetInfo> m_FontAssetInfos = new List<FontAssetInfo>();
     private int m_CurGenerateIndex;
 
-    public void SetCustomizedCreaterSettings(TMProFontCustomizedCreater.CustomizedCreaterSettings settings)
+    private void OnMyEnable()
     {
+        TMProFontCustomizedCreater.CustomizedCreaterSettings settings =
+            TMProFontCustomizedCreater.GetCustomizedCreaterSettings();
+
         // 以字体做索引，相同的字体只会生成一次字体纹理
         string str1 = "t:Font";
         string[] fonts = AssetDatabase.FindAssets(str1, new[] { settings.fontFolderPath });
@@ -884,7 +893,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         m_AtlasWidth = settings.atlasWidth;
         m_AtlasHeight = settings.atlasHeight;
         m_CharacterSetSelectionMode = settings.characterSetSelectionMode;
-        if (string.IsNullOrEmpty(settings.characterSequenceFile))
+        if (!string.IsNullOrEmpty(settings.characterSequenceFile))
         {
             var characterList = AssetDatabase.LoadAssetAtPath<TextAsset>(settings.characterSequenceFile);
             m_CharacterSequence = characterList.text;

@@ -1,10 +1,16 @@
-﻿using TMPro.EditorUtilities;
+﻿using System;
+using TMPro.EditorUtilities;
 using UnityEditor;
 
-public class TMProFontCustomizedCreater : EditorWindow
+public class TMProFontCustomizedCreater 
 {
     [MenuItem("界面工具/TextMeshPro工具/TextMeshPro 字库生成工具")]
     static void Open()
+    {
+        EditorWindow.GetWindow<TMProFontCustomizedCreaterWindow>();
+    }
+
+    public static CustomizedCreaterSettings GetCustomizedCreaterSettings()
     {
         var settings = new CustomizedCreaterSettings
         {
@@ -24,9 +30,7 @@ public class TMProFontCustomizedCreater : EditorWindow
             renderMode = (int)RenderModes.DistanceField16,
             includeFontFeatures = false
         };
-
-        var window = GetWindow<TMProFontCustomizedCreaterWindow>();
-        window.SetCustomizedCreaterSettings(settings);
+        return settings;
     }
 
     public struct CustomizedCreaterSettings
