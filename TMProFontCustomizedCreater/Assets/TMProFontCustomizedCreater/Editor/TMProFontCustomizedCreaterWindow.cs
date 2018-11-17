@@ -957,6 +957,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
     private readonly List<FontAssetInfo> m_FontAssetInfos = new List<FontAssetInfo>();
     private int m_CurGenerateIndex;
+    private string m_CharacterSequenceFile;
     private string[] m_FontBackupPaths;
 
     private void OnMyEnable()
@@ -997,11 +998,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         m_AtlasWidth = settings.atlasWidth;
         m_AtlasHeight = settings.atlasHeight;
         m_CharacterSetSelectionMode = settings.characterSetSelectionMode;
-        if (!string.IsNullOrEmpty(settings.characterSequenceFile))
-        {
-            var characterList = AssetDatabase.LoadAssetAtPath<TextAsset>(settings.characterSequenceFile);
-            m_CharacterSequence = characterList.text;
-        }
+        m_CharacterSequenceFile = settings.characterSequenceFile;
         m_FontStyle = (FaceStyles)settings.fontStyle;
         m_FontStyleValue = settings.fontStyleModifier;
         m_RenderMode = (RenderModes)settings.renderMode;
@@ -1101,6 +1098,13 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
 
     private void Generate()
     {
+        m_CharacterSequence = System.String.Empty;
+        if (!string.IsNullOrEmpty(m_CharacterSequenceFile))
+        {
+            var characterList = AssetDatabase.LoadAssetAtPath<TextAsset>(m_CharacterSequenceFile);
+            m_CharacterSequence = characterList.text;
+        }
+
         m_CurGenerateIndex = -1;
         GenerateNext();
     }
