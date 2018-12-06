@@ -30,7 +30,8 @@ public class TMProFontCustomizedCreater
             fontStyle = (int)FaceStyles.Normal,
             fontStyleModifier = 2,
             renderMode = (int)RenderModes.DistanceField16,
-            includeFontFeatures = false
+            includeFontFeatures = false,
+            characterUseFontBackup = new []{new []{""}, new []{"+-"}}
         };
         return settings;
     }
@@ -76,6 +77,11 @@ public class TMProFontCustomizedCreater
         public float fontStyleModifier;
         public int renderMode;
         public bool includeFontFeatures;
+
+        /// <summary>
+        /// 某些字符指定使用备用字体，根据字体顺序
+        /// </summary>
+        public string[][] characterUseFontBackup;
     }
 
     /// <summary>

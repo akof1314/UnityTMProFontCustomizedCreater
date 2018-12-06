@@ -870,6 +870,24 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
                 list.Add(m_FontGlyphInfo[index].id);
             }
         }
+
+        // 如果有指定字体，则在这里插入
+        if (m_CharacterUseFontBackup != null && m_CharacterUseFontBackup.Length > backupLevel)
+        {
+            foreach (var character in m_CharacterUseFontBackup[backupLevel])
+            {
+                if (!string.IsNullOrEmpty(character))
+                {
+                    for (int i = 0; i < character.Length; i++)
+                    {
+                        // Check to make sure we don't include duplicates
+                        if (list.FindIndex(item => item == character[i]) == -1)
+                            list.Add(character[i]);
+                    }
+                }
+            }
+        }
+
         if (list.Count == 0)
         {
             return;
@@ -959,6 +977,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
     private int m_CurGenerateIndex;
     private string m_CharacterSequenceFile;
     private string[] m_FontBackupPaths;
+    private string[][] m_CharacterUseFontBackup;
 
     private void OnMyEnable()
     {
@@ -1004,6 +1023,7 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         m_RenderMode = (RenderModes)settings.renderMode;
         m_IncludeKerningPairs = settings.includeFontFeatures;
         m_FontBackupPaths = settings.fontBackupPaths;
+        m_CharacterUseFontBackup = settings.characterUseFontBackup;
 
         if (string.IsNullOrEmpty(m_WarningMessage) || m_SelectedFontAsset || m_LegacyFontAsset || m_SavedFontAtlas || m_IsFontAtlasInvalid)
         {
@@ -1103,6 +1123,21 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
         {
             var characterList = AssetDatabase.LoadAssetAtPath<TextAsset>(m_CharacterSequenceFile);
             m_CharacterSequence = characterList.text;
+        }
+
+        // 如果指定字体里有包含的，则要在这里去除掉
+        if (m_CharacterUseFontBackup != null)
+        {
+            foreach (var characters in m_CharacterUseFontBackup)
+            {
+                foreach (var character in characters)
+                {
+                    if (!string.IsNullOrEmpty(character))
+                    {
+                        m_CharacterSequence = m_CharacterSequence.Replace(character, System.String.Empty);
+                    }
+                }
+            }
         }
 
         m_CurGenerateIndex = -1;
