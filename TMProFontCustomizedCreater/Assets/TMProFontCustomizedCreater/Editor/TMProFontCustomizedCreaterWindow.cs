@@ -944,18 +944,22 @@ public class TMProFontCustomizedCreaterWindow : EditorWindow
                     }
                 }
                 var idx = ArrayUtility.FindIndex(m_FontGlyphInfo, info => info.id == gi.id);
-                if (idx != -1)
+                if (idx == -1)
                 {
-                    var gi2 = m_FontGlyphInfo[idx];
-                    gi2.x = xStart + m_Padding;
-                    gi2.y = m_AtlasHeight - yStart + m_Padding;
-                    gi2.width = gi.width;
-                    gi2.height = gi.height;
-                    gi2.xAdvance = gi.xAdvance;
-                    gi2.xOffset = gi.xOffset;
-                    gi2.yOffset = gi.yOffset;
-                    m_FontGlyphInfo[idx] = gi2;
+                    // 往数组里面添加
+                    ArrayUtility.Add(ref m_FontGlyphInfo, new FT_GlyphInfo() {id = gi.id});
+                    idx = m_FontGlyphInfo.Length - 1;
                 }
+
+                var gi2 = m_FontGlyphInfo[idx];
+                gi2.x = xStart + m_Padding;
+                gi2.y = m_AtlasHeight - yStart + m_Padding;
+                gi2.width = gi.width;
+                gi2.height = gi.height;
+                gi2.xAdvance = gi.xAdvance;
+                gi2.xOffset = gi.xOffset;
+                gi2.yOffset = gi.yOffset;
+                m_FontGlyphInfo[idx] = gi2;
 
                 yStart = yStart - h - m_Padding - 1;
                 numY++;
