@@ -59,9 +59,9 @@ namespace TMPro.EditorUtilities
         Object m_SourceFontFile;
         TMP_FontAsset m_SelectedFontAsset;
         TMP_FontAsset m_LegacyFontAsset;
-        TMP_FontAsset m_ReferencedFontAsset;
+        //TMP_FontAsset m_ReferencedFontAsset;
 
-        TextAsset m_CharactersFromFile;
+        //TextAsset m_CharactersFromFile;
         int m_PointSize;
 
         int m_Padding = 5;
@@ -622,7 +622,6 @@ namespace TMPro.EditorUtilities
 
                 // Add Font Atlas as Sub-Asset
                 fontAsset.atlasTextures = new Texture2D[] {m_FontAtlasTexture};
-                m_FontAtlasTexture.name = tex_FileName + " Atlas";
                 fontAsset.atlasWidth = m_AtlasWidth;
                 fontAsset.atlasHeight = m_AtlasHeight;
                 fontAsset.atlasPadding = m_Padding;
@@ -691,7 +690,6 @@ namespace TMPro.EditorUtilities
 
                 // Add Font Atlas as Sub-Asset
                 fontAsset.atlasTextures = new Texture2D[] {m_FontAtlasTexture};
-                m_FontAtlasTexture.name = tex_FileName + " Atlas";
                 fontAsset.atlasWidth = m_AtlasWidth;
                 fontAsset.atlasHeight = m_AtlasHeight;
                 fontAsset.atlasPadding = m_Padding;
@@ -773,10 +771,10 @@ namespace TMPro.EditorUtilities
             settings.atlasHeight = m_AtlasHeight;
             settings.characterSetSelectionMode = m_CharacterSetSelectionMode;
             settings.characterSequence = m_CharacterSequence;
-            settings.referencedFontAssetGUID =
-                AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(m_ReferencedFontAsset));
-            settings.referencedTextAssetGUID =
-                AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(m_CharactersFromFile));
+            //settings.referencedFontAssetGUID =
+            //    AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(m_ReferencedFontAsset));
+            //settings.referencedTextAssetGUID =
+            //    AssetDatabase.AssetPathToGUID(AssetDatabase.GetAssetPath(m_CharactersFromFile));
             //settings.fontStyle = (int)m_FontStyle;
             //settings.fontStyleModifier = m_FontStyleValue;
             settings.renderMode = (int) m_GlyphRenderMode;
@@ -1140,7 +1138,7 @@ namespace TMPro.EditorUtilities
                             FontEngine.RenderGlyphsToTexture(m_GlyphsToRender, m_Padding, m_GlyphRenderMode, m_AtlasTextureBuffer, m_AtlasWidth, m_AtlasHeight);
                         }
 
-                        ThreadRenderBackupFont(0, m_AtlasWidth);
+                        //ThreadRenderBackupFont(0, m_AtlasWidth);
 
                         m_IsRenderingDone = true;
 
@@ -1190,8 +1188,15 @@ namespace TMPro.EditorUtilities
             }
 
             string fontPath = m_FontBackupPaths[backupLevel];
-            FontEngineError errorCode = FontEngine.LoadFontFace(fontPath);
-            if (errorCode != FontEngineError.Success)
+            m_LoadFontFaceInMainThreadFontPath = fontPath;
+            m_LoadFontFaceInMainThread = 1; // FontEngine.LoadFontFace 只能在主线程使用，所有只能等待
+
+            while (m_LoadFontFaceInMainThread == 1)
+            {
+                Thread.Sleep(50);
+            }
+
+            if (m_LoadFontFaceInMainThread != 2)
             {
                 return;
             }
@@ -1216,7 +1221,7 @@ namespace TMPro.EditorUtilities
                 }
             }
 
-            errorCode = FontEngine.RenderGlyphsToTexture(glyphsToRender, m_Padding, m_GlyphRenderMode, tmpTextureBuffer, tmpAtlasWidth, tmpAtlasHeight);
+            FontEngineError errorCode = FontEngine.RenderGlyphsToTexture(glyphsToRender, m_Padding, m_GlyphRenderMode, tmpTextureBuffer, tmpAtlasWidth, tmpAtlasHeight);
             if (errorCode != 0)
             {
                 return;
@@ -1279,6 +1284,8 @@ namespace TMPro.EditorUtilities
         private string m_CharacterSequenceFile;
         private string[] m_FontBackupPaths;
         private string[][] m_CharacterUseFontBackup;
+        private int m_LoadFontFaceInMainThread;
+        private string m_LoadFontFaceInMainThreadFontPath;
 
         private void OnMyEnable()
         {
@@ -1297,7 +1304,7 @@ namespace TMPro.EditorUtilities
                 info.fontName = Path.GetFileNameWithoutExtension(info.fontPath);
 
                 List<string> assetPaths = new List<string>();
-                str1 = "t:TMP_FontAsset " + info.fontName + "_SDF";
+                str1 = "t:TMP_FontAsset " + info.fontName;
                 var assets = AssetDatabase.FindAssets(str1, new[] { settings.fontMaterialsFolderPath });
                 foreach (var asset in assets)
                 {
@@ -1413,6 +1420,11 @@ namespace TMPro.EditorUtilities
                     m_FontAtlasTexture = null;
                 }
                 Repaint();
+            }
+            else if (m_LoadFontFaceInMainThread == 1)
+            {
+                FontEngineError errorCode = FontEngine.LoadFontFace(m_LoadFontFaceInMainThreadFontPath);
+                m_LoadFontFaceInMainThread = errorCode == FontEngineError.Success ? 2 : 3;
             }
         }
 

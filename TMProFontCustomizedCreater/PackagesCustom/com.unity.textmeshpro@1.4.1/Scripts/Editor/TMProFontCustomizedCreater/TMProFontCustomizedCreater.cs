@@ -11,17 +11,21 @@ namespace TMPro.EditorUtilities
         [MenuItem("界面工具/TextMeshPro工具/TextMeshPro 字库生成工具")]
         static void Open()
         {
-            //EditorWindow.GetWindow<TMProFontCustomizedCreaterWindow>();
+            EditorWindow.GetWindow<TMProFontCustomizedCreaterWindow>();
         }
 
         public static CustomizedCreaterSettings GetCustomizedCreaterSettings()
         {
             var settings = new CustomizedCreaterSettings
             {
-                fontFolderPath = "Assets/AB/Font",
-                fontMaterialsFolderPath = "Assets/TextMesh Pro/Resources_nopack/Fonts & Materials",
+                //fontFolderPath = "Assets/AB/Font",
+                fontFolderPath = "Assets/Demo/Fonts",
+                //fontMaterialsFolderPath = "Assets/TextMesh Pro/Resources_nopack/Fonts & Materials",
+                fontMaterialsFolderPath = "Assets/Demo/Fonts & Materials",
+                //fontBackupPaths = new[]
+                //    {"Assets/TextMesh Pro/NewFonts/FZYaSong-B.TTF", "Assets/TextMesh Pro/NewFonts/SYHT.OTF"},
                 fontBackupPaths = new[]
-                    {"Assets/TextMesh Pro/NewFonts/FZYaSong-B.TTF", "Assets/TextMesh Pro/NewFonts/SYHT.OTF"},
+                    {"Assets/Demo/Fonts/FZYaSong-B.TTF", "Assets/Demo/Fonts/SYHT.OTF"},
                 pointSizeSamplingMode = 1,
                 pointSize = 22,
                 padding = 5,
@@ -29,7 +33,8 @@ namespace TMPro.EditorUtilities
                 atlasWidth = 2048,
                 atlasHeight = 2048,
                 characterSetSelectionMode = 8, // Character List from File
-                characterSequenceFile = "Assets/TextMesh Pro/chinese_3500.txt",
+                //characterSequenceFile = "Assets/TextMesh Pro/chinese_3500.txt",
+                characterSequenceFile = "Assets/Demo/chinese_3500.txt",
                 //fontStyle = (int)FaceStyles.Normal,
                 //fontStyleModifier = 2,
                 renderMode = (int) GlyphRenderMode.SDFAA,
