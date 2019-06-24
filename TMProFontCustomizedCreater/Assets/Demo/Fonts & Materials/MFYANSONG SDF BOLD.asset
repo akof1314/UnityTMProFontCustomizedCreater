@@ -367,7 +367,7 @@ MonoBehaviour:
     m_GlyphIndex: 29892
     m_Scale: 1
   m_AtlasTextures:
-  - {fileID: 0}
+  - {fileID: 28781736707172088, guid: c6b093ce65941284aa267901566853a9, type: 2}
   m_AtlasTextureIndex: 0
   m_UsedGlyphRects:
   - m_X: 0
@@ -504,7 +504,7 @@ MonoBehaviour:
   - regularTypeface: {fileID: 0}
     italicTypeface: {fileID: 0}
   fontWeights: []
-  normalStyle: 0
+  normalStyle: 0.35
   normalSpacingOffset: 0
   boldStyle: 0.75
   boldSpacing: 7
@@ -542,7 +542,7 @@ Material:
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _MainTex:
-        m_Texture: {fileID: 28630878479288778, guid: c6b093ce65941284aa267901566853a9,
+        m_Texture: {fileID: 28781736707172088, guid: c6b093ce65941284aa267901566853a9,
           type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
