@@ -341,7 +341,7 @@ namespace TMPro.EditorUtilities
 
             // Saving File for Debug
             //var pngData = m_FontAtlasTexture.EncodeToPNG();
-            //File.WriteAllBytes("Assets/Textures/Debug Font Texture.png", pngData);
+            //File.WriteAllBytes("Assets/Debug Font Texture.png", pngData);
         }
 
 
@@ -1138,7 +1138,7 @@ namespace TMPro.EditorUtilities
                             FontEngine.RenderGlyphsToTexture(m_GlyphsToRender, m_Padding, m_GlyphRenderMode, m_AtlasTextureBuffer, m_AtlasWidth, m_AtlasHeight);
                         }
 
-                        //ThreadRenderBackupFont(0, m_AtlasWidth);
+                        ThreadRenderBackupFont(0, m_AtlasWidth);
 
                         m_IsRenderingDone = true;
 
@@ -1200,33 +1200,78 @@ namespace TMPro.EditorUtilities
             {
                 return;
             }
+            FontEngine.SetFaceSize(m_PointSize);
 
             var tmpAtlasWidth = 512;
             var tmpAtlasHeight = 512;
             var tmpTextureBuffer = new byte[tmpAtlasWidth * tmpAtlasHeight];
             GlyphLoadFlags glyphLoadFlags = ((GlyphRasterModes)m_GlyphRenderMode & GlyphRasterModes.RASTER_MODE_HINTED) == GlyphRasterModes.RASTER_MODE_HINTED ? GlyphLoadFlags.LOAD_RENDER : GlyphLoadFlags.LOAD_RENDER | GlyphLoadFlags.LOAD_NO_HINTING;
-            List<Glyph> glyphsToRender = new List<Glyph>();
+            var glyphsToPack = new List<Glyph>();
+            var glyphsPacked = new List<Glyph>();
             foreach (var unicode in list)
             {
                 uint glyphIndex;
 
                 if (FontEngine.TryGetGlyphIndex(unicode, out glyphIndex))
                 {
+                    // Skip over potential duplicate glyph references.
+                    if (m_GlyphLookupMap.ContainsKey(glyphIndex))
+                    {
+                        // Add additional glyph reference for this character.
+                        m_GlyphLookupMap[glyphIndex].Add(unicode);
+                        continue;
+                    }
+
+                    // Add glyph reference to glyph lookup map.
+                    m_GlyphLookupMap.Add(glyphIndex, new List<uint>() { unicode });
+
                     Glyph glyph;
 
                     if (FontEngine.TryGetGlyphWithIndexValue(glyphIndex, glyphLoadFlags, out glyph))
                     {
-                        glyphsToRender.Add(glyph);
+                        if (glyph.glyphRect.width > 0 && glyph.glyphRect.height > 0)
+                        {
+                            glyphsToPack.Add(glyph);
+                        }
+                        else
+                        {
+                            glyphsPacked.Add(glyph);
+                        }
                     }
+
+                    m_MissingCharacters.Remove(unicode);
+                }
+            }
+            int packingModifier = ((GlyphRasterModes)m_GlyphRenderMode & GlyphRasterModes.RASTER_MODE_BITMAP) == GlyphRasterModes.RASTER_MODE_BITMAP ? 0 : 1;
+            m_FreeGlyphRects.Clear();
+            m_FreeGlyphRects.Add(new GlyphRect(0, 0, tmpAtlasWidth - packingModifier, tmpAtlasHeight - packingModifier));
+            m_UsedGlyphRects.Clear();
+
+            FontEngine.TryPackGlyphsInAtlas(glyphsToPack, glyphsPacked, m_Padding, (GlyphPackingMode)m_PackingMode, m_GlyphRenderMode, tmpAtlasWidth, tmpAtlasHeight, m_FreeGlyphRects, m_UsedGlyphRects);
+
+            List<Glyph> glyphsToRender = new List<Glyph>();
+            foreach (Glyph glyph in glyphsPacked)
+            {
+                // Add glyphs to list of glyphs that need to be rendered.
+                if (glyph.glyphRect.width > 0 && glyph.glyphRect.height > 0)
+                    glyphsToRender.Add(glyph);
+
+                foreach (uint unicode in m_GlyphLookupMap[glyph.index])
+                {
+                    // Create new Character
+                    m_FontCharacterTable.Add(new TMP_Character(unicode, glyph));
                 }
             }
 
+            if (glyphsToRender.Count == 0)
+            {
+                return;
+            }
             FontEngineError errorCode = FontEngine.RenderGlyphsToTexture(glyphsToRender, m_Padding, m_GlyphRenderMode, tmpTextureBuffer, tmpAtlasWidth, tmpAtlasHeight);
             if (errorCode != 0)
             {
                 return;
             }
-
             int wordWidth = m_PointSize;
             int xStart = xOffsetDist - m_Padding * 2 - wordWidth;   // 从padding开始拷贝，否则会出现负偏移丢失的情况
             int yStart = m_AtlasHeight - m_Padding - 1;
@@ -1237,31 +1282,33 @@ namespace TMPro.EditorUtilities
                 {
                     var gi = glyphsToRender[index].glyphRect;
                     var x = Mathf.FloorToInt(gi.x) - m_Padding;
-                    var y = tmpAtlasHeight - (Mathf.FloorToInt(gi.y) - m_Padding);
+                    var y = (Mathf.FloorToInt(gi.y) - m_Padding);
                     var w = Mathf.CeilToInt(gi.width) + m_Padding * 2;
                     var h = Mathf.CeilToInt(gi.height) + m_Padding * 2;
+                    y += h;
 
                     for (int r = 0; r < h; r++)
                     {
                         for (int c = 0; c < w; c++)
                         {
-                            m_AtlasTextureBuffer[(yStart - r) * m_AtlasWidth + c + xStart] =
-                                tmpTextureBuffer[(y - r) * tmpAtlasWidth + c + x];
+                            int a = (yStart - r) * m_AtlasWidth + c + xStart;
+                            int b = (y - r) * tmpAtlasWidth + c + x;
+                            m_AtlasTextureBuffer[a] = tmpTextureBuffer[b];
                         }
                     }
-                    var idx = m_GlyphsToRender.FindIndex(glyph => glyph.index == glyphsToRender[index].index);
+                    var idx = m_FontGlyphTable.FindIndex(glyph => glyph.index == glyphsToRender[index].index);
                     if (idx == -1)
                     {
-                        m_GlyphsToRender.Add(glyphsToRender[index]);
-                        idx = m_GlyphsToRender.Count - 1;
+                        m_FontGlyphTable.Add(glyphsToRender[index]);
+                        idx = m_FontGlyphTable.Count - 1;
                     }
 
-                    var gi2 = m_GlyphsToRender[idx].glyphRect;
+                    var gi2 = m_FontGlyphTable[idx].glyphRect;
                     gi2.x = xStart + m_Padding;
-                    gi2.y = m_AtlasHeight - yStart + m_Padding;
+                    gi2.y = yStart + m_Padding - h;
                     gi2.width = gi.width;
                     gi2.height = gi.height;
-                    m_GlyphsToRender[idx].glyphRect = gi2;
+                    m_FontGlyphTable[idx].glyphRect = gi2;
 
                     yStart = yStart - h - m_Padding - 1;
                     numY++;
