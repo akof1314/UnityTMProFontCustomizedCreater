@@ -655,7 +655,7 @@ namespace TMPro.EditorUtilities
             else
             {
                 // Find all Materials referencing this font atlas.
-                Material[] material_references = TMP_EditorUtility.FindMaterialReferences(fontAsset);
+                Material[] material_references = TMProFontCustomizedCreater.FindMaterialReferences(fontAsset);
 
                 // Destroy Assets that will be replaced.
                 if (fontAsset.atlasTextures != null && fontAsset.atlasTextures.Length > 0)
