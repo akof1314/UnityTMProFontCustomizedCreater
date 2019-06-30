@@ -29,3 +29,6 @@ Unity 推荐使用 TextMesh Pro 来代替内置的现有文本组件如 Text Mes
 ## 示意图
 
 ![](https://github.com/akof1314/UnityTMProFontCustomizedCreater/raw/master/Pic/pic.png)
+
+## 说明
+如果使用 Unity 2018，代码在分支 [https://github.com/akof1314/UnityTMProFontCustomizedCreater/tree/2018.3](https://github.com/akof1314/UnityTMProFontCustomizedCreater/tree/2018.3)
